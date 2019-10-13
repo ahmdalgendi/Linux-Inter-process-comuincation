@@ -865,3 +865,136 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list,unsigned int id, unsigned ch
 	return cpd;
 }
 
+
+/*long mbx421_init(unsigned int ptrs, unsigned int prob): 
+Initializes the mailbox system, setting up the initial state of the skip list. 
+The ptrs parameter specifies the maximum number of pointers any node in the list 
+will be allowed to have. The prob parameter specifies the inverse of the probability 
+that a node will be promoted to having an additional pointer in it (that is to say that 
+if the function is called with prob = 2, then the probability that the node
+will have 2 pointers is 1 / 2 and the probability that it will have 3 pointers is 1 / 4, and so on).
+The only valid values for the prob parameter are 2, 4, 8, and 16 — 
+any other value shall result in an error being returned. Additionally, 
+the ptrs parameter must be non-zero — a zero value should result in an error being returned.
+
+Returns 0 on success. Only the root user (the user with a uid of 0) shall be allowed to call this function.
+*/
+SYSCALL_DEFINE2(mbx421_init,unsigned int ,ptrs, unsigned int, prob ){
+	printk("mbx421_init\n");
+	return 0;
+
+}
+
+
+/*long mbx421_shutdown(void): 
+Shuts down the mailbox system, 
+deleting all existing mailboxes and any messages contained therein. 
+Returns 0 on success. Only the root user shall be allowed to call this function.
+*/
+SYSCALL_DEFINE0(mbx421_shutdown)
+{
+	printk("mbx421_shutdown\n");
+	return 0;
+}
+
+/*long mbx421_create(unsigned int id): 
+Creates a new mailbox with the given id if it does not already exist 
+(no duplicates are allowed). Returns 0 on success or an appropriate error on failure.
+If an id of 0 or (264 - 1) is passed, 
+this is considered an invalid ID and an appropriate error shall be returned. 
+Only the root user shall be allowed to call this function.
+*/
+SYSCALL_DEFINE1(mbx421_create, unsigned int , id)
+{
+	printk("mbx421_create\n");
+	return 0;
+}
+
+/*long mbx421_destroy(unsigned int id): 
+Deletes the mailbox identified by id if it exists and the user has permission to do so. 
+If the mailbox has any messages stored in it, these messages should be deleted. 
+Returns 0 on success or an appropriate error code on failure. 
+Only the root user shall be allowed to call this function.
+*/
+
+SYSCALL_DEFINE1(mbx421_destroy, unsigned int , id){
+	printk("mbx421_destroy\n");
+	return 0 ;
+}
+
+/*long mbx421_count(unsigned int id): R
+eturns the number of messages in the mailbox identified by id if it
+exists and the user has permission to access it. 
+Returns an appropriate error code on failure.
+*/
+
+SYSCALL_DEFINE1(mbx421_count, unsigned int , id){
+	printk("mbx421_count\n");
+	return 0 ;
+}
+
+/*long mbx421_send(unsigned int id, const unsigned char __user *msg, long len): 
+Sends a new message to the mailbox identified by id if it exists and the user has access to it. 
+The message shall be read from the user-space pointer msg and shall be len bytes long. 
+Returns 0 on success or an appropriate error code on failure.
+*/
+SYSCALL_DEFINE3(mbx421_send, unsigned int , id, const unsigned char __user, *msg, long ,len){
+	printk("mbx421_send\n");
+	return 0 ;
+}
+
+
+/*long mbx421_recv(unsigned int id, unsigned char __user *msg, long len):
+Reads the first message that is in the mailbox identified by id 
+if it exists and the user has access to it, 
+storing either the entire length of the message or len bytes to the user-space pointer msg, 
+whichever is less. The entire message is then removed from the mailbox 
+(even if len was less than the total length of the message). 
+Returns the number of bytes copied to the user space pointer on success or an appropriate error code on 
+failure.
+*/
+
+SYSCALL_DEFINE3(mbx421_recv, unsigned int , id,  unsigned char __user, *msg, long ,len){
+	printk("mbx421_recv\n");
+	return 0 ;
+}
+
+
+/* long mbx421_length(unsigned int id): 
+Retrieves the length (in bytes) of the first message pending in the mailbox identified by id, 
+if it exists and the user has access to it. Returns the number of bytes in the first 
+pending message in the mailbox on success, or an appropriate error code on failure.
+*/
+
+SYSCALL_DEFINE1(mbx421_length, unsigned int , id){
+	printk("mbx421_length\n");
+	return 0 ;
+}
+
+
+/*long mbx421_acl_add(unsigned int id, pid_t process_id): 
+Adds PID specified by process_id to the ACL for the mailbox with the ID of id if it
+exists and the user has access to do so. Returns 0 on success or an appropriate error code on failure.
+Only the root user shall be allowed to call this function.
+*/
+
+
+SYSCALL_DEFINE2(mbx421_acl_add, unsigned int , id,pid_t ,process_id){
+	printk("mbx421_acl_add\n");
+	return 0 ;
+}
+
+
+
+/*long mbx421_acl_remove(unsigned int id, pid_t process_id): 
+Removes the PID specified by process_id from the ACL for the mailbox with the ID of id if it 
+exists and the user has access to do so. Returns 0 on success or an appropriate error code on failure.
+Only the root user shall be allowed to call this function
+.
+*/
+
+SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int , id,pid_t ,process_id){
+	printk("mbx421_acl_remove\n");
+	return 0 ;
+}
+
