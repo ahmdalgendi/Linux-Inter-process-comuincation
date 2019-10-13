@@ -343,6 +343,18 @@
 332	common	statx			__x64_sys_statx
 333	common	io_pgetevents		__x64_sys_io_pgetevents
 334	common	rseq			__x64_sys_rseq
+335 common	mbx421_init			__x64_sys_mbx421_init
+336 common	mbx421_shutdown		__x64_sys_mbx421_shutdown
+337	common	mbx421_create		__x64_sys_mbx421_create
+338	common	mbx421_destroy		__x64_sys_mbx421_destroy
+339	common	mbx421_count		__x64_sys_mbx421_count
+340	common	mbx421_send			__x64_sys_mbx421_send
+341	common	mbx421_recv			__x64_sys_mbx421_recv
+342	common	mbx421_length		__x64_sys_mbx421_length
+343	common	mbx421_acl_add		__x64_sys_mbx421_acl_add
+344	common	mbx421_acl_remove	__x64_sys_mbx421_acl_remove
+
+
 # don't use numbers 387 through 423, add new calls after the last
 # 'common' entry
 424	common	pidfd_send_signal	__x64_sys_pidfd_send_signal
