@@ -1397,4 +1397,25 @@ static inline unsigned int ksys_personality(unsigned int personality)
 	return old;
 }
 
+asmlinkage long sys_mbx421_init(unsigned int ptrs, unsigned int prob);
+
+asmlinkage long mbx421_shutdown(void);
+
+asmlinkage long mbx421_create(unsigned int id);
+
+asmlinkage long mbx421_destroy(unsigned int id);
+
+asmlinkage long mbx421_count(unsigned int id);
+
+asmlinkage long mbx421_send(unsigned int id, const unsigned char __user *msg, long len);
+
+asmlinkage long mbx421_recv(unsigned int id, unsigned char __user *msg, long len);
+
+asmlinkage long mbx421_length(unsigned int id);
+
+asmlinkage long mbx421_acl_add(unsigned int id, pid_t process_id);
+
+asmlinkage long mbx421_acl_remove(unsigned int id, pid_t process_id); 
+
+
 #endif
