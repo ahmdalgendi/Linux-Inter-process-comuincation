@@ -421,10 +421,12 @@ struct MLNode* popMailBox(struct MailBox *q)
 		q->rear = NULL;
 	return temp;
 }
+
 int size_ML(struct MailBox* q)
 {
 	return q->size;
 }
+
 void destroyMailBox(struct MailBox *q)
 {
 	struct MLNode * node  ,*tmp;
@@ -507,7 +509,7 @@ MailBoxSkipList *init_MailBoxSkipList(int MAXLVL, int P)
 		if (P == probs[i])
 			found++;
 	}
-	if (!found)
+	if (!found || MAXLVL < 1)
 		return NULL;
 
 	ret = (MailBoxSkipList*)kmalloc(sizeof(MailBoxSkipList),GFP_KERNEL);
@@ -833,7 +835,7 @@ long mbx421_send_helper(MailBoxSkipList* skip_list ,unsigned int id, const unsig
 	mail = find_MailBox(skip_list, id);
 	if (mail == NULL)
 	{
-		return -1; // failed
+		return 0; // failed
 	}
 	pushMailBox(mail, msg, len);
 	return  1;
@@ -866,6 +868,8 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list,unsigned int id, unsigned ch
 }
 
 
+MailBoxSkipList *container;
+
 /*long mbx421_init(unsigned int ptrs, unsigned int prob): 
 Initializes the mailbox system, setting up the initial state of the skip list. 
 The ptrs parameter specifies the maximum number of pointers any node in the list 
@@ -881,6 +885,13 @@ Returns 0 on success. Only the root user (the user with a uid of 0) shall be all
 */
 SYSCALL_DEFINE2(mbx421_init,unsigned int ,ptrs, unsigned int, prob ){
 	printk("mbx421_init\n");
+
+	if(get_current_cred()->uid.val != 0)
+        return -EACCES;
+  
+	container = init_MailBoxSkipList(ptrs,prob);
+	if(container == NULL)
+		return -EINVAL;
 	return 0;
 
 }
@@ -894,6 +905,14 @@ Returns 0 on success. Only the root user shall be allowed to call this function.
 SYSCALL_DEFINE0(mbx421_shutdown)
 {
 	printk("mbx421_shutdown\n");
+	if(get_current_cred()->uid.val != 0)
+        return -EACCES;
+    if (container == NULL)
+    {
+    	return -EPERM;
+    }
+	destroy_MailBoxSkipList(container);
+
 	return 0;
 }
 
@@ -907,7 +926,14 @@ Only the root user shall be allowed to call this function.
 SYSCALL_DEFINE1(mbx421_create, unsigned int , id)
 {
 	printk("mbx421_create\n");
-	return 0;
+	if(get_current_cred()->uid.val != 0)
+        return -EACCES;
+	int ret = insertElement_MailBoxSkipList(container, id);
+	if (ret)
+	{
+		return 0;		
+	}
+	return -EEXIST;
 }
 
 /*long mbx421_destroy(unsigned int id): 
@@ -919,18 +945,27 @@ Only the root user shall be allowed to call this function.
 
 SYSCALL_DEFINE1(mbx421_destroy, unsigned int , id){
 	printk("mbx421_destroy\n");
-	return 0 ;
+	if(get_current_cred()->uid.val != 0)
+        return -EACCES;
+	int ret=	deleteElement_MailBoxSkipList(container, id);
+	if(ret)
+		return 0 ;
+	return -ENOENT;
 }
 
-/*long mbx421_count(unsigned int id): R
-eturns the number of messages in the mailbox identified by id if it
+/*long mbx421_count(unsigned int id): 
+Returns the number of messages in the mailbox identified by id if it
 exists and the user has permission to access it. 
 Returns an appropriate error code on failure.
 */
 
 SYSCALL_DEFINE1(mbx421_count, unsigned int , id){
 	printk("mbx421_count\n");
-	return 0 ;
+	int ret = get_msgCount(container, id);
+	if(ret >= 0 )
+		return ret ;
+	return -ENOENT;
+
 }
 
 /*long mbx421_send(unsigned int id, const unsigned char __user *msg, long len): 
@@ -939,8 +974,22 @@ The message shall be read from the user-space pointer msg and shall be len bytes
 Returns 0 on success or an appropriate error code on failure.
 */
 SYSCALL_DEFINE3(mbx421_send, unsigned int , id, const unsigned char __user, *msg, long ,len){
+	unsigned char * kmesg;
 	printk("mbx421_send\n");
-	return 0 ;
+	if(msg == NULL !! len <= 0)
+		return -EINVAL;
+	
+	kmesg = ( unsigned char *)kmalloc(sizeof(char) * len);
+	
+	__copy_from_user(kmesg , mesg , len * sizeof(char));
+
+	int ret = mbx421_send_helper(container, id, kmsg, len);
+	if (ret)
+	{
+		return 0;
+	}
+	return -ENOENT;
+
 }
 
 
@@ -956,6 +1005,7 @@ failure.
 
 SYSCALL_DEFINE3(mbx421_recv, unsigned int , id,  unsigned char __user, *msg, long ,len){
 	printk("mbx421_recv\n");
+
 	return 0 ;
 }
 
