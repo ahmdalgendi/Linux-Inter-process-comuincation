@@ -859,6 +859,7 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list,unsigned int id, unsigned ch
 
 
 MailBoxSkipList *container;
+spinlock_t lock;
 
 /*long mbx421_init(unsigned int ptrs, unsigned int prob): 
 Initializes the mailbox system, setting up the initial state of the skip list. 
@@ -880,8 +881,11 @@ SYSCALL_DEFINE2(mbx421_init,unsigned int ,ptrs, unsigned int, prob ){
         return -EACCES;
   
 	container = init_MailBoxSkipList(ptrs,prob);
+
 	if(container == NULL)
 		return -EINVAL;
+    spin_lock_init(&lock);
+
 	return 0;
 
 }
@@ -895,13 +899,20 @@ Returns 0 on success. Only the root user shall be allowed to call this function.
 SYSCALL_DEFINE0(mbx421_shutdown)
 {
 	printk("mbx421_shutdown\n");
+	spin_lock_irq(&lock);
 	if(get_current_cred()->uid.val != 0)
-        return -EACCES;
+    {
+		spin_unlock_irq(&lock);
+    	return -EACCES;
+    }
     if (container == NULL)
     {
+		spin_unlock_irq(&lock);
+
     	return -EPERM;
     }
 	destroy_MailBoxSkipList(container);
+	spin_unlock_irq(&lock);
 
 	return 0;
 }
@@ -915,14 +926,24 @@ Only the root user shall be allowed to call this function.
 */
 SYSCALL_DEFINE1(mbx421_create, unsigned int , id)
 {
+	spin_lock_irq(&lock);
+
 	printk("mbx421_create\n");
 	if(get_current_cred()->uid.val != 0)
-        return -EACCES;
+    {
+	   spin_unlock_irq(&lock);
+       return -EACCES;
+
+	}
 	int ret = insertElement_MailBoxSkipList(container, id);
 	if (ret)
 	{
+	spin_unlock_irq(&lock);
+
 		return 0;		
 	}
+	spin_unlock_irq(&lock);
+	
 	return -EEXIST;
 }
 
