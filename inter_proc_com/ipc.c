@@ -850,20 +850,10 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list,unsigned int id, unsigned ch
 	
 	int cpd ,i;
 
-	ret= find_MailBox(skip_list ,id);
+	ret = find_MailBox(skip_list ,id);
 	poped = popMailBox(ret);
 	len = min(len, poped->msg_len);
-	cpd = 0;
-
-	for ( i =0;i<len;i++)
-	{
-		if(msg + i)
-		{
-			cpd++;
-			*(msg + i) = poped->msg[i];
-		}
-		else { break; }
-	}
+	cpd = __copy_to_user(msg , poped->msg, len);
 	return cpd;
 }
 
@@ -947,7 +937,7 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned int , id){
 	printk("mbx421_destroy\n");
 	if(get_current_cred()->uid.val != 0)
         return -EACCES;
-	int ret=	deleteElement_MailBoxSkipList(container, id);
+	int ret = deleteElement_MailBoxSkipList(container, id);
 	if(ret)
 		return 0 ;
 	return -ENOENT;
@@ -975,18 +965,19 @@ Returns 0 on success or an appropriate error code on failure.
 */
 SYSCALL_DEFINE3(mbx421_send, unsigned int , id, const unsigned char __user, *msg, long ,len){
 	unsigned char * kmesg;
+	int ret , num;
 	printk("mbx421_send\n");
 	if(msg == NULL !! len <= 0)
 		return -EINVAL;
 	
 	kmesg = ( unsigned char *)kmalloc(sizeof(char) * len);
 	
-	__copy_from_user(kmesg , mesg , len * sizeof(char));
+	num = __copy_from_user(kmesg , mesg , len * sizeof(char));
 
-	int ret = mbx421_send_helper(container, id, kmsg, len);
+	 ret = mbx421_send_helper(container, id, kmsg, len);
 	if (ret)
 	{
-		return 0;
+		return num ;
 	}
 	return -ENOENT;
 
@@ -1006,7 +997,17 @@ failure.
 SYSCALL_DEFINE3(mbx421_recv, unsigned int , id,  unsigned char __user, *msg, long ,len){
 	printk("mbx421_recv\n");
 
-	return 0 ;
+	if(msg == NULL !! len <= 0)
+		return -EINVAL;
+	
+
+	int ret = mbx421_recv_helper(container, id, msg, len);
+	if (ret)
+	{
+		return ret;
+	}
+	return -ENOENT;
+
 }
 
 
@@ -1017,8 +1018,13 @@ pending message in the mailbox on success, or an appropriate error code on failu
 */
 
 SYSCALL_DEFINE1(mbx421_length, unsigned int , id){
+	int ret;
 	printk("mbx421_length\n");
-	return 0 ;
+	ret = get_msgCount(container,id);
+	if(ret != -1)
+		return ret;
+
+	return -ENOENT ;
 }
 
 
@@ -1030,8 +1036,19 @@ Only the root user shall be allowed to call this function.
 
 
 SYSCALL_DEFINE2(mbx421_acl_add, unsigned int , id,pid_t ,process_id){
+	ACLSkipList * acl;
+	int ret;
+	struct MailBox * mailbox;
 	printk("mbx421_acl_add\n");
-	return 0 ;
+	mailbox = find_MailBox(container, id);
+	if(mailbox == NULL)
+		return -ENOENT ;
+	ret = insertElement_ACL(mailbox->acl, process_id);
+	if (ret)
+	{
+		return 0 ;
+	}
+	return -EEXIST;
 }
 
 
@@ -1044,7 +1061,18 @@ Only the root user shall be allowed to call this function
 */
 
 SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int , id,pid_t ,process_id){
+	int ret;
+	struct MailBox * mailbox;
 	printk("mbx421_acl_remove\n");
-	return 0 ;
+	mailbox = find_MailBox(container, id);
+	if(mailbox == NULL)
+		return -ENOENT ;
+	ret = deleteElement_ACL(mailbox->acl, process_id);
+	if (ret)
+	{
+		return 0 ;
+	}
+
+	return -EEXIST;
 }
 
