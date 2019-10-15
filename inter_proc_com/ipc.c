@@ -955,10 +955,18 @@ Only the root user shall be allowed to call this function.
 */
 
 SYSCALL_DEFINE1(mbx421_destroy, unsigned int , id){
+	spin_lock_irq(&lock);
+
 	printk("mbx421_destroy\n");
 	if(get_current_cred()->uid.val != 0)
+    {
+		spin_unlock_irq(&lock);
+     	
         return -EACCES;
+	}
 	int ret = deleteElement_MailBoxSkipList(container, id);
+	spin_unlock_irq(&lock);
+	
 	if(ret)
 		return 0 ;
 	return -ENOENT;
