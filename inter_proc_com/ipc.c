@@ -477,10 +477,10 @@ MailBoxSkipList *init_MailBoxSkipList(int MAXLVL, int P)
 	int probs[5], found, i;
 	MailBoxSkipList *ret;
 	struct MailBox *mailBox;
-	probs[1] = 2;
+	probs[0] = 2;
 	probs[1] = 4;
-	probs[1] = 8;
-	probs[1] = 16;
+	probs[2] = 8;
+	probs[3] = 16;
 	found = 0;
 	for (i = 0; i < 4; ++i) {
 		if (P == probs[i])
