@@ -823,8 +823,7 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob) {
 	if (get_current_cred()->uid.val != 0)
 		return -EACCES;
 	if (already_init)
-		return  -EADDRINUSE;
-	already_init = 1;
+		return  -EADDRINUSE;	
 	getnstimeofday(&ts);
 	seed_random(ts.tv_nsec);
 
@@ -832,6 +831,8 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob) {
 
 	if (container == NULL)
 		return -EINVAL;
+	already_init = 1;
+	
 	spin_lock_init(&lock);
 
 	return 0;
