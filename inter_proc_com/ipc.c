@@ -1,10 +1,5 @@
 
 
-#include<stdio.h>
-#include<stdlib.h>
-#include <sys/types.h>
-#include <time.h>
-#include <string.h>
 #include <linux/kernel.h>
 #include <linux/syscalls.h>
 #include <linux/slab.h>
@@ -16,10 +11,9 @@
 #include<linux/mutex.h>
 #include<linux/spinlock.h>
 #include<linux/string.h>
+#include <linux/ktime.h>
+#include <linux/timekeeping.h>
 #include <linux/time.h>
-#include <linux/time.h>
-#include <linux/time.h>
-
 typedef struct ACLNode
 {
 
@@ -797,7 +791,7 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned c
 	struct MailBox *ret;
 	struct MLNode * poped;
 
-	int cpd, i;
+	int cpd;
 
 	ret = find_mail_box_and_return_node(skip_list, id);
 	poped = popMailBox(ret);
@@ -823,6 +817,7 @@ the ptrs parameter must be non-zero — a zero value should result in an error b
 Returns 0 on success. Only the root user (the user with a uid of 0) shall be allowed to call this function.
 */
 SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob) {
+	struct timespec ts;
 	printk("mbx421_init\n");
 	
 	if (get_current_cred()->uid.val != 0)
@@ -830,7 +825,8 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob) {
 	if (already_init)
 		return  -EADDRINUSE;
 	already_init = 1;
-	seed_random(time(0));
+	getnstimeofday(&ts);
+	seed_random(ts.tv_nsec);
 
 	container = init_MailBoxSkipList(ptrs, prob);
 
@@ -878,6 +874,7 @@ Only the root user shall be allowed to call this function.
 */
 SYSCALL_DEFINE1(mbx421_create, unsigned int, id)
 {
+	int ret;
 	spin_lock_irq(&lock);
 
 	printk("mbx421_create\n");
@@ -887,7 +884,7 @@ SYSCALL_DEFINE1(mbx421_create, unsigned int, id)
 		return -EACCES;
 
 	}
-	int ret = insert_element_mail_box_skip_list(container, id);
+	 ret = insert_element_mail_box_skip_list(container, id);
 	if (ret)
 	{
 		spin_unlock_irq(&lock);
@@ -907,6 +904,7 @@ Only the root user shall be allowed to call this function.
 */
 
 SYSCALL_DEFINE1(mbx421_destroy, unsigned int, id) {
+	int ret;
 	spin_lock_irq(&lock);
 
 	printk("mbx421_destroy\n");
@@ -916,7 +914,7 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned int, id) {
 
 		return -EACCES;
 	}
-	int ret = deleteElement_MailBoxSkipList(container, id);
+	 ret = deleteElement_MailBoxSkipList(container, id);
 	spin_unlock_irq(&lock);
 
 	if (ret)
@@ -948,14 +946,14 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id, const unsigned char __user, *msg,
 	unsigned char * kmesg;
 	int ret, num;
 	printk("mbx421_send\n");
-	if (msg == NULL !!len <= 0)
+	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-	kmesg = (unsigned char *)kmalloc(sizeof(char) * len);
+	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 
-	num = __copy_from_user(kmesg, mesg, len * sizeof(char));
+	num = __copy_from_user(kmesg, msg, len * sizeof(char));
 
-	ret = mbx421_send_helper(container, id, kmsg, len);
+	ret = mbx421_send_helper(container, id, kmesg, len);
 	if (ret)
 	{
 		return num;
@@ -976,13 +974,15 @@ failure.
 */
 
 SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user, *msg, long, len) {
+	
+	int ret;
 	printk("mbx421_recv\n");
 
-	if (msg == NULL !!len <= 0)
+	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
 
-	int ret = mbx421_recv_helper(container, id, msg, len);
+	ret = mbx421_recv_helper(container, id, msg, len);
 	if (ret)
 	{
 		return ret;
@@ -1017,14 +1017,13 @@ Only the root user shall be allowed to call this function.
 
 
 SYSCALL_DEFINE2(mbx421_acl_add, unsigned int, id, pid_t, process_id) {
-	ACLSkipList * acl;
 	int ret;
 	struct MailBox * mailbox;
 	printk("mbx421_acl_add\n");
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
 		return -ENOENT;
-	ret = insertElement_ACL(mailbox->acl, process_id);
+	ret = insertElement_ACL(&mailbox->acl, process_id);
 	if (ret)
 	{
 		return 0;
@@ -1048,7 +1047,7 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int, id, pid_t, process_id) {
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
 		return -ENOENT;
-	ret = delete_element_acl(mailbox->acl, process_id);
+	ret = delete_element_acl(&mailbox->acl, process_id);
 	if (ret)
 	{
 		return 0;
@@ -1056,3 +1055,4 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int, id, pid_t, process_id) {
 
 	return -EEXIST;
 }
+																											
