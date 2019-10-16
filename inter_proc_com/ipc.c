@@ -1056,38 +1056,3 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int, id, pid_t, process_id) {
 
 	return -EEXIST;
 }
-
-// Driver to test above code 
-int main()
-{
-	// Seed random number generator
-
-	seed_random(time(0));
-
-
-	// create ACLSkipList object with MAXLVL and P
-	MailBoxSkipList *lst = init_MailBoxSkipList(3, 4);
-
-	insert_element_mail_box_skip_list(lst, 3);
-	insert_element_mail_box_skip_list(lst, 6);
-	insert_element_mail_box_skip_list(lst, 7);
-	insert_element_mail_box_skip_list(lst, 9);
-	insert_element_mail_box_skip_list(lst, 12);
-	insert_element_mail_box_skip_list(lst, 19);
-	insert_element_mail_box_skip_list(lst, 17);
-	insert_element_mail_box_skip_list(lst, 26);
-	insert_element_mail_box_skip_list(lst, 21);
-	insert_element_mail_box_skip_list(lst, 25);
-	displayList_MailBoxSkipList(lst);
-
-	//Search for node 19
-	printf("is found ? %d",
-	search_element_mail_box_skip_list(lst, 19));
-
-	//Delete node 19
-	deleteElement_MailBoxSkipList(lst, 19);
-	displayList_MailBoxSkipList(lst);
-	char msg[] = "hello" , ss[5];
-	mbx421_send_helper(lst, 3, msg, 5);
-	int x=	mbx421_recv_helper(lst, 3, ss, 10);
-}
