@@ -364,6 +364,11 @@ void pushMailBox(struct MailBox *q, const unsigned char *msg, long len)
 	//Create a new LL node
 	struct MLNode* temp;
 	temp = new_mail_box_node(msg, len);
+	printk("now at pushMailBox , msg =  ");
+	for (int i = 0; i < len; ++i)
+	{
+		printk("%c", msg[i]);
+	}
 	(q->size)++;
 
 	// If queue is empty, then new node is front and rear both
