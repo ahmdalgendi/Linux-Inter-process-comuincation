@@ -497,7 +497,7 @@ MailBoxSkipList *init_MailBoxSkipList(int MAXLVL, int P)
 	mailBox = createMailBox(MAXLVL, P, LONG_MIN);
 	ret->header = init_MailBoxSkipListNode(mailBox, MAXLVL);
 	return  ret;
-}
+}           
 
 
 
@@ -849,6 +849,10 @@ SYSCALL_DEFINE0(mbx421_shutdown)
 {
 	printk("mbx421_shutdown\n");
 	spin_lock_irq(&lock);
+	if (already_init)
+	{
+		return -ENOENT;
+	}
 	if (get_current_cred()->uid.val != 0)
 	{
 		spin_unlock_irq(&lock);
@@ -862,7 +866,7 @@ SYSCALL_DEFINE0(mbx421_shutdown)
 	}
 	destroy_mail_box_skip_list(container);
 	spin_unlock_irq(&lock);
-
+	already_init = 0;
 	return 0;
 }
 
