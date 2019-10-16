@@ -341,10 +341,7 @@ struct MLNode* new_mail_box_node(const unsigned char* msg, long len)
 	int i;
 	temp = (struct MLNode*)kmalloc(sizeof(struct MLNode), GFP_KERNEL);
 	//use kmalloc
-	temp->msg = (unsigned char *)kmalloc(sizeof(char) * len, GFP_KERNEL);
-	for (i = 0; i < len; ++i) {
-		temp->msg[i] = msg[i];
-	}
+	temp->msg = msg;
 	temp->msg_len = len;
 	temp->next = NULL;
 	return temp;
@@ -780,6 +777,7 @@ long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned int id, const unsig
 	{
 		return 0; // failed
 	}
+	printk("at mbx421_send_helper and mail was found\n");
 	pushMailBox(mail, msg, len);
 	return  1;
 }
@@ -919,7 +917,7 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned int, id) {
 
 		return -EACCES;
 	}
-	 ret = deleteElement_MailBoxSkipList(container, id);
+	ret = deleteElement_MailBoxSkipList(container, id);
 	spin_unlock_irq(&lock);
 
 	if (ret)
@@ -957,6 +955,7 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id, const unsigned char __user, *msg,
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 
 	num = __copy_from_user(kmesg, msg, len * sizeof(char));
+	printk("iam after __copy_from_user mbx421_send\n");
 
 	ret = mbx421_send_helper(container, id, kmesg, len);
 	if (ret)
