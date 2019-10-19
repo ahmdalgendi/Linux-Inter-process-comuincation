@@ -31,10 +31,10 @@ long mbx421_destroy(unsigned int id) {
 long mbx421_count(unsigned int id) {
     return syscall(__NR_hello5,id);
 }
-long mbx421_send(unsigned int id, const unsigned char  *msg, long len) {
+long mbx421_send(unsigned int id,  unsigned char  msg[], long len) {
     return syscall(__NR_hello6,id , msg , len );
 }
-long mbx421_recv(unsigned int id, unsigned char  *msg, long len){
+long mbx421_recv(unsigned int id, unsigned char  msg[], long len){
     return syscall(__NR_hello7, id , msg , len);
 }
 long mbx421_length(unsigned int id) {
@@ -67,8 +67,8 @@ void print_menu()
 int main(int argc, char *argv[]) {
     unsigned int id ;
     long len;
-    unsigned char *msg;
-    msg = (unsigned char*) malloc(sizeof(char) * 100);
+    unsigned char msg[100];
+    
     pid_t process_id;
     int p , mx;
 pid_t pid ;
@@ -107,6 +107,8 @@ pid_t pid ;
 			case 6:
 				printf("id , msg , len\n");
 				scanf("%u%s%d", &id , msg , &len);
+				printf("%s\n", msg);
+
 				printf("mbx421_send = %d\n" , mbx421_send(id, msg, len));
 			break;
 			case 7:

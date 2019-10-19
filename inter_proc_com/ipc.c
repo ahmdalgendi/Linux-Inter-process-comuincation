@@ -14,6 +14,7 @@
 #include <linux/ktime.h>
 #include <linux/timekeeping.h>
 #include <linux/time.h>
+
 typedef struct ACLNode
 {
 
@@ -334,11 +335,10 @@ struct MailBox {
 };
 
 
-struct MLNode* new_mail_box_node(const unsigned char* msg, long len)
+struct MLNode* new_mail_box_node( unsigned char* msg, long len)
 {    //use kmalloc
 
 	struct MLNode* temp;
-	int i;
 	temp = (struct MLNode*)kmalloc(sizeof(struct MLNode), GFP_KERNEL);
 	//use kmalloc
 	temp->msg = msg;
@@ -359,13 +359,14 @@ struct MailBox *createMailBox(int mxLevel, int p, int ID)
 }
 
 // push a new message to the mailbox
-void pushMailBox(struct MailBox *q, const unsigned char *msg, long len)
+void pushMailBox(struct MailBox *q,  unsigned char *msg, long len)
 {
+	int i ;
 	//Create a new LL node
 	struct MLNode* temp;
 	temp = new_mail_box_node(msg, len);
 	printk("now at pushMailBox , msg =  ");
-	for (int i = 0; i < len; ++i)
+	for ( i = 0; i < len; ++i)
 	{
 		printk("%c", msg[i]);
 	}
@@ -772,7 +773,7 @@ int get_msgCount(MailBoxSkipList * skip_list, unsigned int key)
 }
 
 //TODO
-long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned int id, const unsigned char
+long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned int id,  unsigned char
 	*msg, long len)
 {
 	struct MailBox * mail;
@@ -937,8 +938,9 @@ Returns an appropriate error code on failure.
 */
 
 SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
+	int ret;	
 	printk("mbx421_count\n");
-	int ret = get_msgCount(container, id);
+	ret = get_msgCount(container, id);
 	if (ret >= 0)
 		return ret;
 	return -ENOENT;
@@ -950,21 +952,24 @@ Sends a new message to the mailbox identified by id if it exists and the user ha
 The message shall be read from the user-space pointer msg and shall be len bytes long.
 Returns 0 on success or an appropriate error code on failure.
 */
-SYSCALL_DEFINE3(mbx421_send, unsigned int, id, const unsigned char __user, *msg, long, len) {
+SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, long, len) {
 	unsigned char * kmesg;
 	int ret, num;
 	printk("mbx421_send\n");
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
+	//printk("iam before access_ok mbx421_send\nmsg = %c , len = %d\n" , msg[0] , len);
 
-	if(!access_ok(VERIFY_READ, msg , sizeof(char) * len))
+	if(access_ok(msg , sizeof(char) * len) == 0)
 	{
 		return -EINVAL;
 	}
+	printk("iam after access_ok mbx421_send\n");
 
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
+	printk("iam after malloc mbx421_send\n");
 
-	num = __copy_from_user(kmesg, msg, len * sizeof(char));
+	num = copy_from_user(kmesg, msg, len * sizeof(char));
 	printk("iam after __copy_from_user mbx421_send\n");
 
 	ret = mbx421_send_helper(container, id, kmesg, len);
@@ -987,7 +992,7 @@ Returns the number of bytes copied to the user space pointer on success or an ap
 failure.
 */
 
-SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user, *msg, long, len) {
+SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user* ,msg, long, len) {
 	
 	int ret;
 	printk("mbx421_recv\n");
@@ -995,7 +1000,7 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user, *msg, long,
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-	if(!access_ok(VERIFY_WRITE, msg , sizeof(char) * len))
+	if(access_ok( msg , sizeof(char) * len) == 0)
 	{
 		return -EINVAL;
 	}
