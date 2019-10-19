@@ -114,7 +114,7 @@ pid_t pid ;
 			case 7:
 				printf("id , msg , len\n");
 				scanf("%u", &id );
-				printf("mbx421_send = %d\n" , mbx421_recv(id, msg, len));
+				printf("mbx421_recv = %d\n" , mbx421_recv(id, msg, len));
 				printf("mess = %s\n",msg);
 
 			break;

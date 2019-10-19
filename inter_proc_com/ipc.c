@@ -798,8 +798,14 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned c
 	int cpd;
 
 	ret = find_mail_box_and_return_node(skip_list, id);
+	if (ret == NULL)
+		return 0;
 	poped = popMailBox(ret);
+	if(poped == NULL)
+		return 0;
+
 	len = min(len, poped->msg_len);
+
 	cpd = __copy_to_user(msg, poped->msg, len);
 	return cpd;
 }
@@ -852,11 +858,15 @@ Returns 0 on success. Only the root user shall be allowed to call this function.
 SYSCALL_DEFINE0(mbx421_shutdown)
 {
 	printk("mbx421_shutdown\n");
+	if (get_current_cred()->uid.val != 0)
+		return -EACCES;
 	spin_lock_irq(&lock);
-	if (already_init)
+
+	if (already_init == 0)
 	{
 		return -ENOENT;
 	}
+
 	if (get_current_cred()->uid.val != 0)
 	{
 		spin_unlock_irq(&lock);
@@ -893,7 +903,8 @@ SYSCALL_DEFINE1(mbx421_create, unsigned int, id)
 		return -EACCES;
 
 	}
-	 ret = insert_element_mail_box_skip_list(container, id);
+
+	ret = insert_element_mail_box_skip_list(container, id);
 	if (ret)
 	{
 		spin_unlock_irq(&lock);
@@ -940,6 +951,8 @@ Returns an appropriate error code on failure.
 SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
 	int ret;	
 	printk("mbx421_count\n");
+
+
 	ret = get_msgCount(container, id);
 	if (ret >= 0)
 		return ret;
@@ -947,29 +960,33 @@ SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
 
 }
 
-/*long mbx421_send(unsigned int id, const unsigned char __user *msg, long len):
-Sends a new message to the mailbox identified by id if it exists and the user has access to it.
-The message shall be read from the user-space pointer msg and shall be len bytes long.
-Returns 0 on success or an appropriate error code on failure.
+/*
+	long mbx421_send(unsigned int id, const unsigned char __user *msg, long len):
+	Sends a new message to the mailbox identified by id if it exists and the user has access to it.
+	The message shall be read from the user-space pointer msg and shall be len bytes long.
+	Returns 0 on success or an appropriate error code on failure.
 */
 SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, long, len) {
 	unsigned char * kmesg;
 	int ret, num;
 	printk("mbx421_send\n");
+
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
-	//printk("iam before access_ok mbx421_send\nmsg = %c , len = %d\n" , msg[0] , len);
+	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
-	if(access_ok(msg , sizeof(char) * len) == 0)
+	if(access_ok(msg , sizeof(char) * len) == 0 )
 	{
+		printk("oooh man, access not ok\n");
 		return -EINVAL;
 	}
+
 	printk("iam after access_ok mbx421_send\n");
 
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 	printk("iam after malloc mbx421_send\n");
 
-	num = copy_from_user(kmesg, msg, len * sizeof(char));
+	num = __copy_from_user(kmesg, msg, len * sizeof(char));
 	printk("iam after __copy_from_user mbx421_send\n");
 
 	ret = mbx421_send_helper(container, id, kmesg, len);
@@ -1023,10 +1040,13 @@ pending message in the mailbox on success, or an appropriate error code on failu
 
 SYSCALL_DEFINE1(mbx421_length, unsigned int, id) {
 	int ret;
+	struct MailBox * mail;
+
 	printk("mbx421_length\n");
-	ret = get_msgCount(container, id);
-	if (ret != -1)
-		return ret;
+	
+	mail = find_mail_box_and_return_node(container , id);
+	if (mail != NULL)
+		return mail->size;
 
 	return -ENOENT;
 }
