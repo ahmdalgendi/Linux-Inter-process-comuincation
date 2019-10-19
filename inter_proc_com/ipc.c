@@ -957,6 +957,11 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id, const unsigned char __user, *msg,
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
+	if(!access_ok(VERIFY_READ, msg , sizeof(char) * len)
+	{
+		return -EINVAL;
+	}
+
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 
 	num = __copy_from_user(kmesg, msg, len * sizeof(char));
@@ -990,7 +995,11 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user, *msg, long,
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-
+	if(!access_ok(VERIFY_WRITE, msg , sizeof(char) * len)
+	{
+		return -EINVAL;
+	}
+	
 	ret = mbx421_recv_helper(container, id, msg, len);
 	if (ret)
 	{
