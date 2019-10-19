@@ -957,7 +957,7 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id, const unsigned char __user, *msg,
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-	if(!access_ok(VERIFY_READ, msg , sizeof(char) * len)
+	if(!access_ok(VERIFY_READ, msg , sizeof(char) * len))
 	{
 		return -EINVAL;
 	}
@@ -995,7 +995,7 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user, *msg, long,
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-	if(!access_ok(VERIFY_WRITE, msg , sizeof(char) * len)
+	if(!access_ok(VERIFY_WRITE, msg , sizeof(char) * len))
 	{
 		return -EINVAL;
 	}
