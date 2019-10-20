@@ -969,27 +969,34 @@ SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
 SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, long, len) {
 	unsigned char * kmesg;
 	int ret, num;
+	struct MailBox * mailbox;
 	printk("mbx421_send\n");
 
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
-	if(access_ok(msg , sizeof(char) * len) == 0 )
+	if(access_ok(msg , len) == 0 )
 	{
 		printk("oooh man, access not ok\n");
 		return -EINVAL;
 	}
+	mailbox = find_mail_box_and_return_node(container, id);
+	//check credentials
+	if (search_element_acl(mailBox->acl , current->pid) == 0 && get_current_cred()->uid.val !=0)
+    {
+        return -EACCES;
+    }
 
 	printk("iam after access_ok mbx421_send\n");
 
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 	printk("iam after malloc mbx421_send\n");
 
-	num = __copy_from_user(kmesg, msg, len * sizeof(char));
+	//num = __copy_from_user(kmesg, msg, len );
 	printk("iam after __copy_from_user mbx421_send\n");
 
-	ret = mbx421_send_helper(container, id, kmesg, len);
+	ret = mbx421_send_helper(container, id, msg, len);
 	if (ret)
 	{
 		return num;
@@ -1011,6 +1018,7 @@ failure.
 
 SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user* ,msg, long, len) {
 	
+	struct MailBox * mailbox;
 	int ret;
 	printk("mbx421_recv\n");
 
@@ -1021,7 +1029,13 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user* ,msg, long,
 	{
 		return -EINVAL;
 	}
-	
+
+	//check credentials
+	if (search_element_acl(mailBox->acl , current->pid) == 0 && get_current_cred()->uid.val !=0)
+    {
+        return -EACCES;
+    }
+
 	ret = mbx421_recv_helper(container, id, msg, len);
 	if (ret)
 	{
@@ -1039,14 +1053,18 @@ pending message in the mailbox on success, or an appropriate error code on failu
 */
 
 SYSCALL_DEFINE1(mbx421_length, unsigned int, id) {
-	int ret;
 	struct MailBox * mail;
 
 	printk("mbx421_length\n");
 	
 	mail = find_mail_box_and_return_node(container , id);
-	if (mail != NULL)
-		return mail->size;
+	//check credentials
+	if (mail != NULL && search_element_acl(mail->acl , current->pid) == 0 && get_current_cred()->uid.val !=0)
+    {
+        return -EACCES;
+    }
+
+	return mail->size;
 
 	return -ENOENT;
 }
@@ -1063,6 +1081,11 @@ SYSCALL_DEFINE2(mbx421_acl_add, unsigned int, id, pid_t, process_id) {
 	int ret;
 	struct MailBox * mailbox;
 	printk("mbx421_acl_add\n");
+// check if root is the called
+	if ( get_current_cred()->uid.val !=0)
+    {
+        return -EACCES;
+    }
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
 		return -ENOENT;
@@ -1087,6 +1110,12 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int, id, pid_t, process_id) {
 	int ret;
 	struct MailBox * mailbox;
 	printk("mbx421_acl_remove\n");
+	// check if root is the called
+	if ( get_current_cred()->uid.val !=0)
+    {
+        return -EACCES;
+    }
+
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
 		return -ENOENT;
