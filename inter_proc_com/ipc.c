@@ -339,10 +339,11 @@ struct MLNode* new_mail_box_node( unsigned char* msg, long len)
 {    //use kmalloc
 
 	struct MLNode* temp;
+	int i;
 	temp = (struct MLNode*)kmalloc(sizeof(struct MLNode), GFP_KERNEL);
 	//use kmalloc
 	temp->msg  = (unsigned char * )kmalloc(sizeof(char) * len  , GFP_KERNEL);
-	for (int i = 0; i < len; ++i)
+	for ( i = 0; i < len; ++i)
 	{
 		(temp->msg)[i] = msg[i]; 	
 	}
@@ -800,7 +801,7 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned c
 {
 	struct MailBox *ret;
 	struct MLNode * poped;
-
+	int i ;
 	int cpd;
 
 	ret = find_mail_box_and_return_node(skip_list, id);
@@ -811,8 +812,8 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned c
 		return 0;
 
 	len = min(len, poped->msg_len);
-	
-	for (int i = 0; i < len; ++i)
+
+	for ( i = 0; i < len; ++i)
 	{
 		msg[i] = (poped->msg)[i];
 	}
