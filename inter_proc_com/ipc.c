@@ -1023,7 +1023,7 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 	num = __copy_from_user(kmesg, msg, len );
 	printk("iam after __copy_from_user mbx421_send\n");
 
-	ret = mbx421_send_helper(container, id, kmsg, len);
+	ret = mbx421_send_helper(container, id, kmesg, len);
 	if (ret)
 	{
 		spin_unlock_irq(&lock);
