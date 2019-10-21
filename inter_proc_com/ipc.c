@@ -807,7 +807,7 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned c
 
 	len = min(len, poped->msg_len);
 
-	cpd = __copy_to_user(msg, poped->msg, len);
+	cpd = copy_to_user(msg, poped->msg, len);
 	return cpd;
 }
 
@@ -953,12 +953,29 @@ Returns an appropriate error code on failure.
 
 SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
 	int ret;	
-	printk("mbx421_count\n");
+	struct MailBox * mailbox;
 
+	printk("mbx421_count\n");
+	spin_lock_irq(&lock);
+
+	mailbox = find_mail_box_and_return_node(container, id);
+	//check credentials
+	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
+    {
+        return -EACCES;
+	spin_unlock_irq(&lock);
+
+    }
 
 	ret = get_msgCount(container, id);
 	if (ret >= 0)
+	{
+		spin_unlock_irq(&lock);
+
 		return ret;
+	}
+		spin_unlock_irq(&lock);
+
 	return -ENOENT;
 
 }
@@ -987,10 +1004,14 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 		printk("oooh man, access not ok\n");
 			return -EINVAL;
 	}
+	spin_lock_irq(&lock);
+
 	mailbox = find_mail_box_and_return_node(container, id);
 	//check credentials
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
+		spin_unlock_irq(&lock);
+
         return -EACCES;
     }
 
@@ -999,14 +1020,16 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 	printk("iam after malloc mbx421_send\n");
 
-	//num = __copy_from_user(kmesg, msg, len );
+	num = __copy_from_user(kmesg, msg, len );
 	printk("iam after __copy_from_user mbx421_send\n");
 
-	ret = mbx421_send_helper(container, id, msg, len);
+	ret = mbx421_send_helper(container, id, kmsg, len);
 	if (ret)
 	{
+		spin_unlock_irq(&lock);
 		return 0;
 	}
+	spin_unlock_irq(&lock);
 	return -ENOENT;
 
 }
@@ -1036,19 +1059,25 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user* ,msg, long,
 	{
 		return -EINVAL;
 	}
+	spin_lock_irq(&lock);
+
 	mailbox = find_mail_box_and_return_node(container, id);
 	
 	//check credentials
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
+		spin_unlock_irq(&lock);
+
         return -EACCES;
     }
 
 	ret = mbx421_recv_helper(container, id, msg, len);
 	if (ret)
 	{
+		spin_unlock_irq(&lock);
 		return ret;
 	}
+	spin_unlock_irq(&lock);
 	return -ENOENT;
 
 }
@@ -1064,17 +1093,24 @@ SYSCALL_DEFINE1(mbx421_length, unsigned int, id) {
 	struct MailBox * mail;
 
 	printk("mbx421_length\n");
+		spin_lock_irq(&lock);
 	
 	mail = find_mail_box_and_return_node(container , id);
 	//check credentials
 	if (mail != NULL && search_element_acl(&(mail->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
+		spin_unlock_irq(&lock);
         return -EACCES;
     }
 
     if(mail->size)
-		return mail->rear->msg_len;
+	{
+		spin_unlock_irq(&lock);
 
+		return mail->rear->msg_len;
+	}
+
+	spin_unlock_irq(&lock);
 	return -ENOENT;
 }
 
@@ -1095,14 +1131,22 @@ SYSCALL_DEFINE2(mbx421_acl_add, unsigned int, id, pid_t, process_id) {
     {
         return -EACCES;
     }
+	spin_lock_irq(&lock);
+
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
+	{	
+		spin_unlock_irq(&lock);
 		return -ENOENT;
+	
+	}
 	ret = insertElement_ACL(&mailbox->acl, process_id);
 	if (ret)
 	{
+		spin_unlock_irq(&lock);
 		return 0;
 	}
+	spin_unlock_irq(&lock);
 	return -EEXIST;
 }
 
@@ -1124,16 +1168,22 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int, id, pid_t, process_id) {
     {
         return -EACCES;
     }
+	spin_lock_irq(&lock);
 
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
+	{	
+		spin_unlock_irq(&lock);
 		return -ENOENT;
+	}
 	ret = delete_element_acl(&mailbox->acl, process_id);
 	if (ret)
 	{
+		spin_unlock_irq(&lock);
 		return 0;
 	}
 
+	spin_unlock_irq(&lock);
 	return -EEXIST;
 }
 																											
