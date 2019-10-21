@@ -341,7 +341,12 @@ struct MLNode* new_mail_box_node( unsigned char* msg, long len)
 	struct MLNode* temp;
 	temp = (struct MLNode*)kmalloc(sizeof(struct MLNode), GFP_KERNEL);
 	//use kmalloc
-	temp->msg = msg;
+	temp->msg  = (unsigned char * )kmalloc(sizeof(char) * len  , GFP_KERNEL);
+	for (int i = 0; i < len; ++i)
+	{
+		(temp->msg)[i] = msg[i]; 	
+	}
+	
 	temp->msg_len = len;
 	temp->next = NULL;
 	return temp;
@@ -806,9 +811,15 @@ long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned c
 		return 0;
 
 	len = min(len, poped->msg_len);
+	
+	for (int i = 0; i < len; ++i)
+	{
+		msg[i] = (poped->msg)[i];
+	}
 
-	cpd = copy_to_user(msg, poped->msg, len);
-	return cpd;
+	// cpd = copy_to_user(msg, poped->msg, len);
+	// return cpd;
+	return len;
 }
 
 
@@ -999,11 +1010,11 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 		return -EINVAL;
 	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
-	if(access_ok(msg , len) == 0 )
-	{
-		printk("oooh man, access not ok\n");
-			return -EINVAL;
-	}
+	// if(access_ok((void *) msg , len) == 0 )
+	// {
+	// 	printk("oooh man, access not ok\n");
+	// 		return -EINVAL;
+	// }
 	spin_lock_irq(&lock);
 
 	mailbox = find_mail_box_and_return_node(container, id);
@@ -1020,10 +1031,10 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
 	printk("iam after malloc mbx421_send\n");
 
-	num = __copy_from_user(kmesg, msg, len );
+	// num = __copy_from_user(kmesg, msg, len );
 	printk("iam after __copy_from_user mbx421_send\n");
 
-	ret = mbx421_send_helper(container, id, kmesg, len);
+	ret = mbx421_send_helper(container, id, msg, len);
 	if (ret)
 	{
 		spin_unlock_irq(&lock);
