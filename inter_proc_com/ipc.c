@@ -331,7 +331,7 @@ struct MailBox {
 	struct MLNode *front, *rear;
 	int size;
 	ACLSkipList acl;
-	long long id;
+	unsigned long id;
 };
 
 
@@ -353,7 +353,7 @@ struct MLNode* new_mail_box_node( unsigned char* msg, long len)
 	return temp;
 }
 
-struct MailBox *createMailBox(int mxLevel, int p, int ID)
+struct MailBox *createMailBox(int mxLevel, int p, unsigned long ID)
 {
 	struct MailBox *q;
 	q = (struct MailBox *) kmalloc(sizeof(struct MailBox), GFP_KERNEL);
@@ -501,7 +501,7 @@ MailBoxSkipList *init_MailBoxSkipList(int MAXLVL, int P)
 	ret->P = P;
 	ret->level = 0;
 	ret->size = 0;
-	mailBox = createMailBox(MAXLVL, P, LONG_MIN);
+	mailBox = createMailBox(MAXLVL, P, 0);
 	ret->header = init_MailBoxSkipListNode(mailBox, MAXLVL);
 	return  ret;
 }           
@@ -531,7 +531,7 @@ MailBoxSkipListNode* createNode_MailBoxNode(struct MailBox * mailBox, int level)
 }
 
 // Insert given process_id in skip list
-int insert_element_mail_box_skip_list(MailBoxSkipList *skipList, unsigned int key)
+int insert_element_mail_box_skip_list(MailBoxSkipList *skipList, unsigned long key)
 {
 	MailBoxSkipListNode *node;
 	MailBoxSkipListNode **skip_list_node_arr;
@@ -663,7 +663,7 @@ void destroy_mail_box_skip_list(MailBoxSkipList *skipList)
 }
 
 // Delete element from skip list
-int deleteElement_MailBoxSkipList(MailBoxSkipList *skipList, unsigned int key)
+int deleteElement_MailBoxSkipList(MailBoxSkipList *skipList, unsigned long key)
 {
 	MailBoxSkipListNode *temp_node;
 
@@ -741,7 +741,7 @@ int search_element_mail_box_skip_list(MailBoxSkipList *skipList, unsigned int ke
 }
 
 
-struct MailBox * find_mail_box_and_return_node(MailBoxSkipList *skipList, unsigned int key)
+struct MailBox * find_mail_box_and_return_node(MailBoxSkipList *skipList, unsigned long key)
 {
 	MailBoxSkipListNode *temp_node;
 	int i;
@@ -777,7 +777,7 @@ int get_msgCount(MailBoxSkipList * skip_list, unsigned int key)
 }
 
 //TODO
-long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned int id,  unsigned char
+long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned long id,  unsigned char
 	*msg, long len)
 {
 	struct MailBox * mail;
@@ -793,7 +793,7 @@ long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned int id,  unsigned c
 }
 //TODO
 
-long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned int id, unsigned char  *msg, long
+long mbx421_recv_helper(MailBoxSkipList * skip_list, unsigned long id, unsigned char  *msg, long
 	len)
 {
 	struct MailBox *ret;
@@ -903,12 +903,23 @@ If an id of 0 or (264 - 1) is passed,
 this is considered an invalid ID and an appropriate error shall be returned.
 Only the root user shall be allowed to call this function.
 */
-SYSCALL_DEFINE1(mbx421_create, unsigned int, id)
+SYSCALL_DEFINE1(mbx421_create, unsigned long, id)
 {
 	int ret;
+
+	if(id == 0 || id == (unsigned long) -1 )
+	{
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&lock);
 
 	printk("mbx421_create\n");
+	if (already_init == 0)
+	{
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+	}
 	if (get_current_cred()->uid.val != 0)
 	{
 		spin_unlock_irq(&lock);
@@ -935,11 +946,19 @@ Returns 0 on success or an appropriate error code on failure.
 Only the root user shall be allowed to call this function.
 */
 
-SYSCALL_DEFINE1(mbx421_destroy, unsigned int, id) {
+SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id) {
 	int ret;
 	spin_lock_irq(&lock);
 
+
 	printk("mbx421_destroy\n");
+
+if (already_init == 0)
+	{
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+	}
+
 	if (get_current_cred()->uid.val != 0)
 	{
 		spin_unlock_irq(&lock);
@@ -960,12 +979,18 @@ exists and the user has permission to access it.
 Returns an appropriate error code on failure.
 */
 
-SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
+SYSCALL_DEFINE1(mbx421_count, unsigned long, id) {
 	int ret;	
 	struct MailBox * mailbox;
 
 	printk("mbx421_count\n");
 	spin_lock_irq(&lock);
+
+	if (already_init == 0)
+	{
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+	}
 	printk("I am before find\n");
 	mailbox = find_mail_box_and_return_node(container, id);
 	//check credentials
@@ -1001,7 +1026,7 @@ SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
 	The message shall be read from the user-space pointer msg and shall be len bytes long.
 	Returns 0 on success or an appropriate error code on failure.
 */
-SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, long, len) {
+SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, long, len) {
 	unsigned char * kmesg;
 	int ret, num;
 	struct MailBox * mailbox;
@@ -1012,9 +1037,14 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 	printk("pointer k lower= %pk\n" , msg);
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
+
+	if (already_init == 0)
+	{
+		return -ENOENT;
+	}
 	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
-	if(access_ok((void *) msg , len) == 0 )
+	if(access_ok(msg , sizeof(unsigned char) * len) == 0 )
 	{
 		printk("oooh man, access not ok\n");
 			return -EINVAL;
@@ -1032,7 +1062,7 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 
 	printk("iam after access_ok mbx421_send\n");
 
-	kmesg = (unsigned char *)kmalloc(sizeof(char) * len,GFP_KERNEL);
+	kmesg = (unsigned char *)kmalloc(sizeof(unsigned char) * len,GFP_KERNEL);
 	printk("iam after malloc mbx421_send\n");
 
 	// num = __copy_from_user(kmesg, msg, len );
@@ -1060,17 +1090,23 @@ Returns the number of bytes copied to the user space pointer on success or an ap
 failure.
 */
 
-SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user* ,msg, long, len) {
+SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user* ,msg, long, len) {
 	
 	struct MailBox * mailbox;
 	int ret;
 	printk("mbx421_recv\n");
-	printk("pointer = %p\n" , msg);
+	printk("pointer = %px\n" , msg);
+
+	if (already_init == 0)
+	{
+		return -ENOENT;
+	}
 
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-	if(access_ok( (void *) msg , sizeof(char) * len) == 0)
+
+	if(access_ok( (void *) msg , sizeof(unsigned char) * len) == 0)
 	{
 		return -EINVAL;
 	}
@@ -1104,12 +1140,17 @@ if it exists and the user has access to it. Returns the number of bytes in the f
 pending message in the mailbox on success, or an appropriate error code on failure.
 */
 
-SYSCALL_DEFINE1(mbx421_length, unsigned int, id) {
+SYSCALL_DEFINE1(mbx421_length, unsigned long, id) {
 	struct MailBox * mail;
 
 	printk("mbx421_length\n");
 		spin_lock_irq(&lock);
 	
+	if (already_init == 0)
+	{
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+	}
 	mail = find_mail_box_and_return_node(container , id);
 	//check credentials
 	if (mail == NULL)
@@ -1143,11 +1184,17 @@ Only the root user shall be allowed to call this function.
 */
 
 
-SYSCALL_DEFINE2(mbx421_acl_add, unsigned int, id, pid_t, process_id) {
+SYSCALL_DEFINE2(mbx421_acl_add, unsigned long, id, pid_t, process_id) {
 	int ret;
 	struct MailBox * mailbox;
 	printk("mbx421_acl_add\n");
 // check if root is the called
+
+	if (already_init == 0)
+	{
+		return -ENOENT;
+	}
+
 	if ( get_current_cred()->uid.val !=0)
     {
         return -EACCES;
@@ -1180,11 +1227,16 @@ Only the root user shall be allowed to call this function
 .
 */
 
-SYSCALL_DEFINE2(mbx421_acl_remove, unsigned int, id, pid_t, process_id) {
+SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id) {
 	int ret;
 	struct MailBox * mailbox;
 	printk("mbx421_acl_remove\n");
 	// check if root is the called
+
+	if (already_init == 0)
+	{
+		return -ENOENT;
+	}
 	if ( get_current_cred()->uid.val !=0)
     {
         return -EACCES;

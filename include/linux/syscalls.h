@@ -1401,21 +1401,21 @@ asmlinkage long sys_mbx421_init(unsigned int ptrs, unsigned int prob);
 
 asmlinkage long sys_mbx421_shutdown(void);
 
-asmlinkage long sys_mbx421_create(unsigned int id);
+asmlinkage long sys_mbx421_create(unsigned long id);
 
-asmlinkage long sys_mbx421_destroy(unsigned int id);
+asmlinkage long sys_mbx421_destroy(unsigned long id);
 
-asmlinkage long sys_mbx421_count(unsigned int id);
+asmlinkage long sys_mbx421_count(unsigned long id);
 
-asmlinkage long sys_mbx421_send(unsigned int id,  unsigned char __user *msg, long len);
+asmlinkage long sys_mbx421_send(unsigned long id,  unsigned char __user *msg, long len);
 
-asmlinkage long sys_mbx421_recv(unsigned int id, unsigned char __user *msg, long len);
+asmlinkage long sys_mbx421_recv(unsigned long id, unsigned char __user *msg, long len);
 
-asmlinkage long sys_mbx421_length(unsigned int id);
+asmlinkage long sys_mbx421_length(unsigned long id);
 
-asmlinkage long sys_mbx421_acl_add(unsigned int id, pid_t process_id);
+asmlinkage long sys_mbx421_acl_add(unsigned long id, pid_t process_id);
 
-asmlinkage long sys_mbx421_acl_remove(unsigned int id, pid_t process_id); 
+asmlinkage long sys_mbx421_acl_remove(unsigned long id, pid_t process_id); 
 
 
 #endif
