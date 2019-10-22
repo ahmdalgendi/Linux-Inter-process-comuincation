@@ -372,10 +372,7 @@ void pushMailBox(struct MailBox *q,  unsigned char *msg, long len)
 	struct MLNode* temp;
 	temp = new_mail_box_node(msg, len);
 	printk("now at pushMailBox , msg =  ");
-	for ( i = 0; i < len; ++i)
-	{
-		printk("%c", msg[i]);
-	}
+	
 	(q->size)++;
 
 	// If queue is empty, then new node is front and rear both
@@ -969,13 +966,19 @@ SYSCALL_DEFINE1(mbx421_count, unsigned int, id) {
 
 	printk("mbx421_count\n");
 	spin_lock_irq(&lock);
-
+	printk("I am before find\n");
 	mailbox = find_mail_box_and_return_node(container, id);
 	//check credentials
+
+	if(mailbox == NULL)
+	{
+		spin_unlock_irq(&lock);	
+		return -ENOENT;
+	}
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
-        return -EACCES;
 	spin_unlock_irq(&lock);
+        return -EACCES;
 
     }
 
@@ -1011,11 +1014,11 @@ SYSCALL_DEFINE3(mbx421_send, unsigned int, id,  unsigned char __user *, msg, lon
 		return -EINVAL;
 	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
-	// if(access_ok((void *) msg , len) == 0 )
-	// {
-	// 	printk("oooh man, access not ok\n");
-	// 		return -EINVAL;
-	// }
+	if(access_ok((void *) msg , len) == 0 )
+	{
+		printk("oooh man, access not ok\n");
+			return -EINVAL;
+	}
 	spin_lock_irq(&lock);
 
 	mailbox = find_mail_box_and_return_node(container, id);
@@ -1067,7 +1070,7 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned int, id, unsigned char __user* ,msg, long,
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
-	if(access_ok( msg , sizeof(char) * len) == 0)
+	if(access_ok( (void *) msg , sizeof(char) * len) == 0)
 	{
 		return -EINVAL;
 	}
@@ -1109,11 +1112,17 @@ SYSCALL_DEFINE1(mbx421_length, unsigned int, id) {
 	
 	mail = find_mail_box_and_return_node(container , id);
 	//check credentials
+	if (mail == NULL)
+	{
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+	}
 	if (mail != NULL && search_element_acl(&(mail->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
 		spin_unlock_irq(&lock);
         return -EACCES;
     }
+
 
     if(mail->size)
 	{
