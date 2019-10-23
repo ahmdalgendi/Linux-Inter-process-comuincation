@@ -13,7 +13,7 @@
 #include<linux/string.h>
 #include <linux/ktime.h>
 #include <linux/timekeeping.h>
-#include <linux/time.h>
+#include <linux/time.h>  
 
 typedef struct ACLNode
 {
@@ -342,11 +342,7 @@ struct MLNode* new_mail_box_node( unsigned char* msg, long len)
 	int i;
 	temp = (struct MLNode*)kmalloc(sizeof(struct MLNode), GFP_KERNEL);
 	//use kmalloc
-	temp->msg  = (unsigned char * )kmalloc(sizeof(char) * len  , GFP_KERNEL);
-	for ( i = 0; i < len; ++i)
-	{
-		(temp->msg)[i] = msg[i]; 	
-	}
+	temp->msg  = msg;
 	
 	temp->msg_len = len;
 	temp->next = NULL;
@@ -371,7 +367,7 @@ void pushMailBox(struct MailBox *q,  unsigned char *msg, long len)
 	//Create a new LL node
 	struct MLNode* temp;
 	temp = new_mail_box_node(msg, len);
-	printk("now at pushMailBox , msg =  ");
+	printk("now at pushMailBox ");
 	
 	(q->size)++;
 
@@ -612,7 +608,7 @@ void displayList_MailBoxSkipList(MailBoxSkipList *skip_list)
 
 		while (node != NULL)
 		{
-			printk("%lld ", node->mailBox->id);
+			printk("%lu ", node->mailBox->id);
 			node = node->forward[i];
 		}
 		printk("\n");
@@ -843,8 +839,12 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob) {
 	if (get_current_cred()->uid.val != 0)
 		return -EACCES;
 	if (already_init)
+	{
+	
+		displayList_MailBoxSkipList(container);
+
 		return  -EADDRINUSE;
-			
+	}	
 	getnstimeofday(&ts);
 	seed_random(ts.tv_nsec);
 
@@ -980,7 +980,6 @@ Returns an appropriate error code on failure.
 */
 
 SYSCALL_DEFINE1(mbx421_count, unsigned long, id) {
-	int ret;	
 	struct MailBox * mailbox;
 
 	printk("mbx421_count\n");
@@ -1000,19 +999,21 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id) {
 		spin_unlock_irq(&lock);	
 		return -ENOENT;
 	}
+	printk("MailBox not null\n");
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
-	spin_unlock_irq(&lock);
+    	
+		spin_unlock_irq(&lock);
         return -EACCES;
 
     }
 
-	ret = get_msgCount(container, id);
-	if (ret >= 0)
+
+	if (mailbox->size >= 0)
 	{
 		spin_unlock_irq(&lock);
 
-		return ret;
+		return mailbox->size;
 	}
 		spin_unlock_irq(&lock);
 
@@ -1042,16 +1043,27 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, lo
 	{
 		return -ENOENT;
 	}
-	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
 	if(access_ok(msg , sizeof(unsigned char) * len) == 0 )
 	{
 		printk("oooh man, access not ok\n");
 			return -EINVAL;
 	}
+	
+	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
+
+	
 	spin_lock_irq(&lock);
 
 	mailbox = find_mail_box_and_return_node(container, id);
+	if (mailbox == NULL)
+	{
+		printk("mail box not found bitch\n");
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+		
+	}
+	printk("mail found maaan\n");
 	//check credentials
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
@@ -1065,14 +1077,14 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, lo
 	kmesg = (unsigned char *)kmalloc(sizeof(unsigned char) * len,GFP_KERNEL);
 	printk("iam after malloc mbx421_send\n");
 
-	// num = __copy_from_user(kmesg, msg, len );
+	num = copy_from_user(kmesg, msg,sizeof(unsigned char ) *len );
 	printk("iam after __copy_from_user mbx421_send\n");
 
-	ret = mbx421_send_helper(container, id, msg, len);
+	ret = mbx421_send_helper(container, id, kmesg, len);
 	if (ret)
 	{
 		spin_unlock_irq(&lock);
-		return 0;
+		return len;
 	}
 	spin_unlock_irq(&lock);
 	return -ENOENT;
@@ -1111,8 +1123,14 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user* ,msg, long
 		return -EINVAL;
 	}
 	spin_lock_irq(&lock);
-
 	mailbox = find_mail_box_and_return_node(container, id);
+	
+	if (mailbox == NULL)
+	{
+		spin_unlock_irq(&lock);
+		return -ENOENT;
+		
+	}
 	
 	//check credentials
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
@@ -1237,6 +1255,8 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id) {
 	{
 		return -ENOENT;
 	}
+		displayList_MailBoxSkipList(container);
+
 	if ( get_current_cred()->uid.val !=0)
     {
         return -EACCES;
