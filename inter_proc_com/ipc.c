@@ -367,7 +367,6 @@ void pushMailBox(struct MailBox *q,  unsigned char *msg, long len)
 	//Create a new LL node
 	struct MLNode* temp;
 	temp = new_mail_box_node(msg, len);
-	printk("now at pushMailBox ");
 	
 	(q->size)++;
 
@@ -783,7 +782,6 @@ long mbx421_send_helper(MailBoxSkipList* skip_list, unsigned long id,  unsigned 
 	{
 		return 0; // failed
 	}
-	printk("at mbx421_send_helper and mail was found\n");
 	pushMailBox(mail, msg, len);
 	return  1;
 }
@@ -834,7 +832,6 @@ Returns 0 on success. Only the root user (the user with a uid of 0) shall be all
 */
 SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob) {
 	struct timespec ts;
-	printk("mbx421_init\n");
 	
 	if (get_current_cred()->uid.val != 0)
 		return -EACCES;
@@ -868,7 +865,6 @@ Returns 0 on success. Only the root user shall be allowed to call this function.
 */
 SYSCALL_DEFINE0(mbx421_shutdown)
 {
-	printk("mbx421_shutdown\n");
 	if (get_current_cred()->uid.val != 0)
 		return -EACCES;
 
@@ -914,7 +910,6 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id)
 
 	spin_lock_irq(&lock);
 
-	printk("mbx421_create\n");
 	if (already_init == 0)
 	{
 		spin_unlock_irq(&lock);
@@ -951,7 +946,6 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id) {
 	spin_lock_irq(&lock);
 
 
-	printk("mbx421_destroy\n");
 
 if (already_init == 0)
 	{
@@ -982,7 +976,6 @@ Returns an appropriate error code on failure.
 SYSCALL_DEFINE1(mbx421_count, unsigned long, id) {
 	struct MailBox * mailbox;
 
-	printk("mbx421_count\n");
 	spin_lock_irq(&lock);
 
 	if (already_init == 0)
@@ -990,7 +983,6 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id) {
 		spin_unlock_irq(&lock);
 		return -ENOENT;
 	}
-	printk("I am before find\n");
 	mailbox = find_mail_box_and_return_node(container, id);
 	//check credentials
 
@@ -999,7 +991,6 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id) {
 		spin_unlock_irq(&lock);	
 		return -ENOENT;
 	}
-	printk("MailBox not null\n");
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
     	
@@ -1031,11 +1022,7 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, lo
 	unsigned char * kmesg;
 	int ret, num;
 	struct MailBox * mailbox;
-	printk("mbx421_send\n");
-	printk("pointer r = %pr\n" , msg);
-	printk("pointer x = %px\n" , msg);
-	printk("pointer k upeer= %pK\n" , msg);
-	printk("pointer k lower= %pk\n" , msg);
+	
 	if (msg == NULL || len <= 0)
 		return -EINVAL;
 
@@ -1046,11 +1033,9 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, lo
 
 	if(access_ok(msg , sizeof(unsigned char) * len) == 0 )
 	{
-		printk("oooh man, access not ok\n");
 			return -EINVAL;
 	}
 	
-	printk("iam before access_ok mbx421_send\nmsg = %s , len = %d\n" , msg , len);
 
 	
 	spin_lock_irq(&lock);
@@ -1058,12 +1043,10 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, lo
 	mailbox = find_mail_box_and_return_node(container, id);
 	if (mailbox == NULL)
 	{
-		printk("mail box not found bitch\n");
 		spin_unlock_irq(&lock);
 		return -ENOENT;
 		
 	}
-	printk("mail found maaan\n");
 	//check credentials
 	if (search_element_acl(&(mailbox->acl) , current->pid) == 0 && get_current_cred()->uid.val !=0)
     {
@@ -1072,13 +1055,10 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id,  unsigned char __user *, msg, lo
         return -EACCES;
     }
 
-	printk("iam after access_ok mbx421_send\n");
 
 	kmesg = (unsigned char *)kmalloc(sizeof(unsigned char) * len,GFP_KERNEL);
-	printk("iam after malloc mbx421_send\n");
 
 	num = copy_from_user(kmesg, msg,sizeof(unsigned char ) *len );
-	printk("iam after __copy_from_user mbx421_send\n");
 
 	ret = mbx421_send_helper(container, id, kmesg, len);
 	if (ret)
@@ -1106,8 +1086,6 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user* ,msg, long
 	
 	struct MailBox * mailbox;
 	int ret;
-	printk("mbx421_recv\n");
-	printk("pointer = %px\n" , msg);
 
 	if (already_init == 0)
 	{
@@ -1161,7 +1139,6 @@ pending message in the mailbox on success, or an appropriate error code on failu
 SYSCALL_DEFINE1(mbx421_length, unsigned long, id) {
 	struct MailBox * mail;
 
-	printk("mbx421_length\n");
 		spin_lock_irq(&lock);
 	
 	if (already_init == 0)
@@ -1205,7 +1182,6 @@ Only the root user shall be allowed to call this function.
 SYSCALL_DEFINE2(mbx421_acl_add, unsigned long, id, pid_t, process_id) {
 	int ret;
 	struct MailBox * mailbox;
-	printk("mbx421_acl_add\n");
 // check if root is the called
 
 	if (already_init == 0)
@@ -1248,14 +1224,12 @@ Only the root user shall be allowed to call this function
 SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id) {
 	int ret;
 	struct MailBox * mailbox;
-	printk("mbx421_acl_remove\n");
 	// check if root is the called
 
 	if (already_init == 0)
 	{
 		return -ENOENT;
 	}
-		displayList_MailBoxSkipList(container);
 
 	if ( get_current_cred()->uid.val !=0)
     {
