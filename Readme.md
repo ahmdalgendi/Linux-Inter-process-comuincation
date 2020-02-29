@@ -83,4 +83,12 @@ This project was part of the Operating system course from UMBC
 5. make localmodconfig
 6. make bindeb-pkg 
 
-		During the make xconfig step, you should go into the Library routines section of the configuration and make the "CRC32c CRC algorithm" or "CRC32c (Castagnoli, et all) Cyclic Redundancy-Check" option be built-in to the kernel instead of being built as a module (make it so it has a checkmark, not a dot in the box next to it). Once you've done that, hit the floppy disk icon to save the configuration. If the make localmodconfig step prompts you at any point, you can just hit Enter to accept the defaults. If you have increased the number of cores given to your VM earlier in the setup, you may wish to give the -j flag to the make bindeb-pkg step to allow it to use multiple cores. If you've dedicated 2 cores to your VM, you'd run that command as make -j2 bindeb-pkg instead.
+		During the make xconfig step, you should go into the Library routines section of the configuration and 
+		make the "CRC32c CRC algorithm" or "CRC32c (Castagnoli, et all) Cyclic Redundancy-Check" 
+		option be built-in to the kernel instead of being built as a module (make it so it has a checkmark, 
+			not a dot in the box next to it). Once you've done that, hit the floppy disk icon to save the 
+			configuration. If the make localmodconfig step prompts you at any point, you can just hit 
+			Enter to accept the defaults. If you have increased the number of cores given to your 
+			VM earlier in the setup, you may wish to give the -j flag to the make bindeb-pkg 
+			step to allow it to use multiple cores. If you've dedicated 2 cores to your VM, 
+			you'd run that command as make -j2 bindeb-pkg instead.
