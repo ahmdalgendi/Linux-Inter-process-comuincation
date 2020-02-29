@@ -1,5 +1,5 @@
 # New version of linux kernel with Inter Process Comunication
-## in this project I implemented A inter process communication protocole
+## in this project I implemented inter process communication protocole within the linux kernel
 
 ---------------
 ## New added system calls
